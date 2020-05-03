@@ -6,9 +6,8 @@ import scala.util._
 
 import zio._
 import net.degoes.zio._
-import scala.compat.Platform
-import zio.internal.PlatformLive
 import zio.internal.Executor
+import zio.internal.Platform
 import scala.concurrent.ExecutionContext
 import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.Executors
@@ -50,9 +49,10 @@ object errors {
   def repeatN(n: Int, action: () => Unit, accum: Boolean = true): Boolean =
     if (n <= 0) accum
     else {
-      val result = try {
-        action(); true
-      } catch { case _: Throwable => false }
+      val result =
+        try {
+          action(); true
+        } catch { case _: Throwable => false }
 
       repeatN(n - 1, action, accum && result)
     }
@@ -102,7 +102,7 @@ object errors {
    * error possible.
    */
   def parseInt2(value: String): IO[Unit, Int]                     = ???
-  def httpReqest2(request: Request): Try[Response]                = ???
+  def httpRequest2(request: Request): Try[Response]               = ???
   def ensureEmailValid(email: String): Either[InvalidEmail, Unit] = ???
   final case class InvalidEmail(message: String)
 
@@ -123,7 +123,7 @@ object errors {
    * so all effects can be used in the same `for` comprehension.
    */
   def parseInt3(value: String): ???         = ???
-  def httpReqest3(request: Request): ???    = ???
+  def httpRequest3(request: Request): ???   = ???
   def ensureEmailValid2(email: String): ??? = ???
   sealed trait MyError
 
@@ -196,17 +196,17 @@ object threads {
    * Create a `Platform` with a single threaded executor.
    */
   val singleThread           = ExecutionContext.fromExecutor(java.util.concurrent.Executors.newSingleThreadExecutor())
-  lazy val oneThreadPlatform = PlatformLive.fromExecutionContext(???)
+  lazy val oneThreadPlatform = Platform.default.withExecutor(???)
 
   /**
    * EXERCISE 3
    *
    * Create a `Runtime` from the platform in Exercise 2.
    */
-  lazy val runtime = Runtime(new DefaultRuntime {}.Environment, ???)
+  lazy val runtime = Runtime(Runtime.default.environment, ???)
 
   /**
-   * EXERCISEE 4
+   * EXERCISE 4
    *
    * Execute `effect1` using the `Runtime` you created in Exercise 3.
    */
@@ -398,12 +398,7 @@ object dependencies {
    * Define a `UserStore` in terms of a `Database`.
    */
   lazy val userService: ZIO[Database, Nothing, UserStore] =
-    ZIO.accessM[Database](
-      env =>
-        UIO {
-          ???
-        }
-    )
+    ZIO.accessM[Database](env => UIO(???))
 
   /**
    * EXERCISE 4

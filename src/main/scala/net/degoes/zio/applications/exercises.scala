@@ -12,17 +12,16 @@ import zio.random.Random
 import java.io.IOException
 
 object sharding extends App {
+
   /**
-   * Create N workers reading from a Queue, if one of them fails, 
-   * then wait for the other ones to process the current item, but 
+   * Create N workers reading from a Queue, if one of them fails,
+   * then wait for the other ones to process the current item, but
    * terminate all the workers.
    */
   def shard[R, E, A](queue: Queue[A], n: Int, worker: A => ZIO[R, E, Unit]): ZIO[R, E, Nothing] = {
     val worker1 = queue.take.flatMap(a => worker(a).uninterruptible).forever
 
-    ZIO.forkAll(List.fill(n)(worker1)).flatMap(fiber =>
-      fiber.join
-    ) *> ZIO.never
+    ZIO.forkAll(List.fill(n)(worker1)).flatMap(fiber => fiber.join) *> ZIO.never
   }
 
   def run(args: List[String]) = ???
@@ -42,10 +41,10 @@ object alerting {
   def sendSystemEmail(to: Email, subject: String, body: String): UIO[Unit] = ???
 
   /**
-   * Use STM to alert an engineer when the number of hourly errors exceeds 
+   * Use STM to alert an engineer when the number of hourly errors exceeds
    * 100.
    */
-  def alertEngineer(metrics: Metrics, onDuty: TRef[Engineer]): UIO[Unit] = 
+  def alertEngineer(metrics: Metrics, onDuty: TRef[Engineer]): UIO[Unit] =
     ???
 }
 
@@ -57,7 +56,7 @@ object parallel_web_crawler {
     trait Service {
       def getURL(url: URL): IO[Exception, String]
     }
-    trait Live extends Web with Blocking {
+    trait Live extends Web with Blocking.Service {
       val web = new Service {
 
         /**
@@ -65,7 +64,7 @@ object parallel_web_crawler {
          *
          * Use the `effectBlocking` combinator to safely import the Scala `Source.fromURL`
          * side-effect into a purely functional ZIO effect, using `refineOrDie` to narrow
-         * the `Throwable` error to `Exceptiono`.
+         * the `Throwable` error to `Exception`.
          */
         def getURL(url: URL): IO[Exception, String] = {
           // def effectBlocking[A](sideEffect: => A): ZIO[Blocking, Throwable, A]
@@ -201,7 +200,7 @@ object parallel_web_crawler {
   def run(args: List[String]): ZIO[Console, Nothing, Int] =
     (for {
       _ <- putStrLn("Hello World!")
-    } yield ()).fold(_ => 1, _ => 0)
+    } yield ()).as(0)
 }
 
 object circuit_breaker extends App {

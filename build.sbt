@@ -1,13 +1,13 @@
-val ZIOVersion        = "1.0.0-RC16"
-val CatsEffectVersion = "2.0.0"
-val MonixVersion      = "3.0.0"
+val ZIOVersion        = "1.0.0-RC18-2"
+val CatsEffectVersion = "2.1.3"
+val MonixVersion      = "3.2.1"
 
 lazy val root = project
   .in(file("."))
   .settings(
     name := "zio-workshop",
     organization := "net.degoes",
-    scalaVersion := "2.12.8",
+    scalaVersion := "2.13.1",
     initialCommands in Compile in console :=
       """|import zio._
          |import zio.console._
@@ -18,18 +18,18 @@ lazy val root = project
     """.stripMargin
   )
 
-addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.6")
+addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.11.0" cross CrossVersion.full)
 addCommandAlias("fmt", "all scalafmtSbt scalafmt test:scalafmt")
 addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")
 
 libraryDependencies ++= Seq(
   // ZIO
-  "dev.zio"       %% "zio"          % ZIOVersion,
-  "dev.zio"       %% "zio-streams"  % ZIOVersion,
-  "org.typelevel" %% "cats-effect"  % CatsEffectVersion,
-  "io.monix"      %% "monix"        % MonixVersion,
+  "dev.zio"       %% "zio"         % ZIOVersion,
+  "dev.zio"       %% "zio-streams" % ZIOVersion,
+  "org.typelevel" %% "cats-effect" % CatsEffectVersion,
+  "io.monix"      %% "monix"       % MonixVersion,
   // URL parsing
-  "io.lemonlabs"  %% "scala-uri"    % "1.4.1"
+  "io.lemonlabs" %% "scala-uri" % "2.2.0"
 )
 
 scalacOptions in Compile in console := Seq(

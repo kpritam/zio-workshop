@@ -78,7 +78,7 @@ object zio_fibers {
    * Using `Fiber#join`, join the main fiber to the fibers constructed below,
    * which yields the value of the (joinee) fiber to the main (joiner) fiber.
    */
-  val fiber1: IO[Nothing, Int]       = Fiber.succeed[Nothing, Int](1) ?
+  val fiber1: IO[Nothing, Int]       = Fiber.succeed[Int](1) ?
   val fiber2: IO[Int, Nothing]       = Fiber.fail[Int](1) ?
   val fiber3: IO[Exception, Nothing] = Fiber.fail[Exception](new Exception("error!")) ?
 
@@ -88,7 +88,7 @@ object zio_fibers {
    * Using `Fiber#await`, suspend the main (joiner) fibers to the below fibers,
    * until they have run their course and produce `Exit` values.
    */
-  val await1: UIO[Exit[Nothing, Int]]       = Fiber.succeed[Nothing, Int](1) ?
+  val await1: UIO[Exit[Nothing, Int]]       = Fiber.succeed[Int](1) ?
   val await2: UIO[Exit[Nothing, Nothing]]   = Fiber.fromEffect(IO.succeed("run forever").forever) ?
   val await3: UIO[Exit[Int, Nothing]]       = Fiber.fail[Int](1) ?
   val await4: UIO[Exit[Exception, Nothing]] = Fiber.fail[Exception](new Exception("error!")) ?
@@ -98,7 +98,7 @@ object zio_fibers {
    *
    * Using `Fiber#poll`, observe to see if the Fiber is done executing.
    */
-  val observe1: UIO[Exit[Nothing, Int]]       = Fiber.succeed[Nothing, Int](1) ?
+  val observe1: UIO[Exit[Nothing, Int]]       = Fiber.succeed[Int](1) ?
   val observe2: UIO[Exit[Nothing, Nothing]]   = Fiber.fromEffect(IO.succeed("run forever").forever) ?
   val observe3: UIO[Exit[Int, Nothing]]       = Fiber.fail[Int](1) ?
   val observe4: UIO[Exit[Exception, Nothing]] = Fiber.fail[Exception](new Exception("error!")) ?
@@ -214,7 +214,7 @@ object zio_parallelism {
     case object Primary   extends Database
     case object Secondary extends Database
   }
-  /* Assume this onoe is implemented: */
+  /* Assume this one is implemented: */
   def getUserById(userId: Int, db: Database): Task[User] = ???
   /* Implement this one: */
   def getUserById1(userId: Int): Task[User] =
@@ -414,11 +414,11 @@ object zio_promise {
    *
    * Build auto-refreshing cache using `Ref`and `Promise`.
    */
-  case class CacheState[V](schedule: Schedule[V, Any])
+  case class CacheState[V](schedule: Schedule[V, Any, Unit])
   trait Cache[E, V] {
     def get: IO[E, V]
   }
-  def makeCache[E, V](getter: IO[E, V], refresh: Schedule[V, Any]): Cache[E, V] = ???
+  def makeCache[E, V](getter: IO[E, V], refresh: Schedule[V, Any, Unit]): Cache[E, V] = ???
 }
 
 object zio_queue {
@@ -470,7 +470,7 @@ object zio_queue {
   /**
    * EXERCISE 5
    *
-   * In a child fiber, read infintely many values out of the queue and write
+   * In a child fiber, read infinitely many values out of the queue and write
    * them to the console. In the main fiber, write 100 values into the queue,
    * using `ZIO.foreach` on a `List`.
    */
@@ -494,9 +494,7 @@ object zio_queue {
       counter <- Ref.make(0)
       mailbox <- Queue.bounded[(Message, Promise[Nothing, Int])](100)
       _       <- (mailbox.take ? : UIO[Fiber[Nothing, Nothing]])
-    } yield { (message: Message) =>
-      ???
-    }
+    } yield { (message: Message) => ??? }
 
   val counterExample: UIO[Int] =
     for {
@@ -564,9 +562,7 @@ object zio_semaphore {
       semaphore <- Semaphore.make(1)
       p         <- Promise.make[Nothing, Unit]
       action    = putStrLn("Acquired") *> p.succeed(())
-      _         <- semaphore.acquire
       _         <- semaphore.withPermit(???).fork // Run in separate fiber
-      _         <- semaphore.release
       msg       <- p.await
     } yield msg
 
@@ -718,7 +714,7 @@ object zio_schedule {
    *
    * Using `Schedule.recurs`, create a schedule that recurs 5 times.
    */
-  val fiveTimes: Schedule[Any, Int] = ???
+  val fiveTimes: Schedule[Any, Int, Unit] = ???
 
   /**
    * EXERCISE 2
@@ -733,14 +729,14 @@ object zio_schedule {
    *
    * Using `Schedule.spaced`, create a schedule that recurs forever every 1 second.
    */
-  val everySecond: Schedule[Any, Int] = ???
+  val everySecond: Schedule[Any, Int, Unit] = ???
 
   /**
    * EXERCISE 4
    *
    * Using the `&&` method of the `Schedule` object, the `fiveTimes` schedule,
    * and the `everySecond` schedule, create a schedule that repeats fives times,
-   * evey second.
+   * every second.
    */
   val fiveTimesEverySecond = ???
 
@@ -784,7 +780,7 @@ object zio_schedule {
    * Using `Schedule.exponential`, create an exponential schedule that starts
    * from 10 milliseconds.
    */
-  val exponentialSchedule: Schedule[Any, Duration] =
+  val exponentialSchedule: Schedule[Any, Duration, Unit] =
     ???
 
   /**
@@ -808,7 +804,7 @@ object zio_schedule {
    * Using `Schedule.identity`, produce a schedule that recurs forever, without delay,
    * returning its inputs.
    */
-  def inputs[A]: Schedule[A, A] = ???
+  def inputs[A]: Schedule[A, A, Unit] = ???
 
   /**
    * EXERCISE 13
@@ -816,7 +812,7 @@ object zio_schedule {
    * Using `Schedule#collect`, produce a schedule that recurs forever, collecting its
    * inputs into a list.
    */
-  def collectedInputs[A]: Schedule[A, List[A]] =
+  def collectedInputs[A]: Schedule[A, List[A], Unit] =
     Schedule.identity[A] ?
 
   /**
@@ -825,7 +821,7 @@ object zio_schedule {
    * Using  `*>` (`zipRight`), combine `fiveTimes` and `everySecond` but return
    * the output of `everySecond`.
    */
-  val fiveTimesEverySecondR: Schedule[Any, Int] = ???
+  val fiveTimesEverySecondR: Schedule[Any, Int, Unit] = ???
 
   /**
    * EXERCISE 15
@@ -837,7 +833,7 @@ object zio_schedule {
    * the schedule.
    */
   import zio.random.Random
-  def mySchedule[A]: ZSchedule[Clock with Random, A, List[A]] =
+  def mySchedule[A]: Schedule[Clock with Random, A, List[A]] =
     ???
 }
 
@@ -901,7 +897,7 @@ object zio_stm {
    *
    * Implement another version of the transfer function, which has the same
    * behavior as `transfer2`, but which uses `STM.check`, a convenience
-   * method that interrnally uses `STM.retry`.
+   * method that internally uses `STM.retry`.
    */
   def transfer3(from: TRef[Int], to: TRef[Int], howMuch: Int): STM[Nothing, Unit] =
     ???
@@ -947,13 +943,13 @@ object zio_stm {
    * Using `ZIO#descriptor` and the `FiberId` inside the descriptor, implement
    * a "fiber reentrant" lock.
    */
-  class ReentrantLock(value: TRef[Option[(FiberId, Int)]]) {
+  class ReentrantLock(value: TRef[Option[(Fiber.Id, Int)]]) {
     def lock: UIO[Unit] = ???
 
     def unlock: UIO[Unit] = ???
   }
   object ReentrantLock {
-    def make: UIO[ReentrantLock] = TRef.make(Option.empty[(FiberId, Int)]).map(r => new ReentrantLock(r)).commit
+    def make: UIO[ReentrantLock] = TRef.make(Option.empty[(Fiber.Id, Int)]).map(r => new ReentrantLock(r)).commit
   }
 
   /**

@@ -7,10 +7,11 @@ import java.io.File
 import java.util.concurrent.{ Executors, TimeUnit }
 
 import zio._
-import zio.internal.PlatformLive
 
 import scala.io.Source
 import java.time.Clock
+import zio.internal.Platform
+import java.io.IOException
 
 /**
  * `ZIO[R, E, A]` is an immutable data structure that models an effect, which
@@ -34,28 +35,28 @@ object zio_types {
    * An effect that might fail with an error of type `E` or succeed with a
    * value of type `A`.
    */
-  type FailOrSuccess[E, A] = ???
+  type FailOrSuccess[E, A] = ZIO[Any, E, A]
 
   /**
    * EXERCISE 2
    *
    * An effect that never fails and might succeed with a value of type `A`
    */
-  type Success[A] = ???
+  type Success[A] = ZIO[Any, Nothing, A]
 
   /**
    * EXERCISE 3
    *
    * An effect that runs forever but might fail with `E`.
    */
-  type Forever[E] = ???
+  type Forever[E] = ZIO[Any, E, Nothing]
 
   /**
    * EXERCISE 4
    *
    * An effect that cannot fail or succeed with a value.
    */
-  type NeverStops = ???
+  type NeverStops = ZIO[Any, Nothing, Nothing]
 
   /**
    * EXERCISE 5
@@ -63,7 +64,7 @@ object zio_types {
    * An effect that may fail with a value of type `E` or succeed with a value
    * of type `A`, and doesn't require any specific environment.
    */
-  type IO[+E, +A] = ???
+  type IO[+E, +A] = ZIO[Any, E, A]
 
   /**
    * EXERCISE 6
@@ -71,7 +72,7 @@ object zio_types {
    * An effect that may fail with `Throwable` or succeed with a value of
    * type `A`, and doesn't require any specific environment.
    */
-  type Task[+A] = ???
+  type Task[+A] = ZIO[Any, Throwable, A]
 
   /**
    * EXERCISE 7
@@ -79,23 +80,23 @@ object zio_types {
    * An effect that cannot fail but may succeed with a value of type `A`,
    * and doesn't require any specific environment.
    */
-  type UIO[+A] = ???
+  type UIO[+A] = ZIO[Any, Nothing, A]
 
   /**
    * EXERCISE 8
    *
-   * An effect that may fail with `Throwable` or succeed with a value of 
+   * An effect that may fail with `Throwable` or succeed with a value of
    * type `A`, and which requires an `R` environment.
    */
-  type RIO[-R, +A] = ???
+  type RIO[-R, +A] = ZIO[R, Throwable, A]
 
   /**
    * EXERCISE 8
    *
-   * An effect that cannot fail, but may succeed with a value of 
+   * An effect that cannot fail, but may succeed with a value of
    * type `A`, and which requires an `R` environment.
    */
-  type URIO[-R, +A] = ???
+  type URIO[-R, +A] = ZIO[R, Nothing, A]
 }
 
 object zio_values {
@@ -106,7 +107,7 @@ object zio_values {
    * Using the `ZIO.succeed` method. Construct an effect that succeeds with the
    * integer `42`, and ascribe the correct type.
    */
-  val ioInt: ??? = ???
+  val ioInt: UIO[Int] = ZIO.succeed(42)
 
   /**
    * EXERCISE 2
@@ -114,7 +115,7 @@ object zio_values {
    * Using the `ZIO.fail` method, construct an effect that fails with the string
    * "Incorrect value", and ascribe the correct type.
    */
-  val incorrectVal: ??? = ???
+  val incorrectVal: ZIO[Any, String, Nothing] = ZIO.fail("Incorrect value")
 
   /**
    * EXERCISE 3
@@ -123,7 +124,7 @@ object zio_values {
    * `println` method, so you have a pure functional version of `println`, and
    * ascribe the correct type.
    */
-  def putStrLn(line: String): ??? = println(line) ?
+  def putStrLn(line: String): UIO[Unit] = ZIO.effectTotal(println(line))
 
   /**
    * EXERCISE 4
@@ -134,7 +135,7 @@ object zio_values {
    * Note: You will have to use the `.refineOrDie` method to refine the
    * `Throwable` type into something more specific.
    */
-  val getStrLn: Task[String] = ???
+  val getStrLn: Task[String] = ZIO.effect(scala.io.StdIn.readLine)
 
   /**
    * EXERCISE 6
@@ -147,7 +148,9 @@ object zio_values {
    */
   import java.io.IOException
   def readFile(file: File): IO[IOException, List[String]] =
-    Source.fromFile(file).getLines.toList ?
+    ZIO.effect(Source.fromFile(file).getLines.toList).refineOrDie[IOException] {
+      case e: IOException => e
+    }
 
   /**
    * EXERCISE 7
@@ -158,8 +161,8 @@ object zio_values {
    * Note: You will have to use the `.refineOrDie` method to refine the
    * `Throwable` type into something more specific.
    */
-  def arrayUpdate[A](a: Array[A], i: Int, f: A => A): ??? =
-    a.update(i, f(a(i))) ?
+  def arrayUpdate[A](a: Array[A], i: Int, f: A => A): IO[ArrayIndexOutOfBoundsException, Unit] =
+    ZIO.effect(a.update(i, f(a(i)))).refineOrDie { case e: ArrayIndexOutOfBoundsException => e }
 
   /**
    * EXERCISE 8
@@ -167,7 +170,11 @@ object zio_values {
    * Using the `ZIO#refineOrDie` method, catch the `NoSuchElementException` and
    * return -1.
    */
-  def firstOrNegative1(as: List[Int]): UIO[Int] = Task.effect(as.head) ?
+  def firstOrNegative1(as: List[Int]): UIO[Int] =
+    Task
+      .effect(as.head)
+      .refineOrDie { case _: NoSuchElementException => -1 }
+      .catchAll(ZIO.succeed(_))
 
   /**
    * EXERCISE 9
@@ -210,16 +217,17 @@ object zio_values {
    *  ZIO (such as `DefaultRuntime`) and call `unsafeRun`, or write your
    * pure main function inside `App`.
    */
-  object Example extends DefaultRuntime {
+  object Example {
+    val runtime               = Runtime.default
     val sayHelloIO: UIO[Unit] = putStrLn("Hello ZIO!")
 
     //run sayHelloIO using `unsafeRun`
-    val sayHello: Unit = ???
+    val sayHello: Unit = runtime.unsafeRun(sayHelloIO)
   }
 
   /**
    * EXERCISE 13
-   * 
+   *
    * Write a simple hello world program.
    */
   object MyMain extends App {
@@ -263,8 +271,8 @@ object zio_operations {
    * Using `ZIO#flatMap`, check the integer produced by an effect, and if it
    * is even, return `attack`, but if it is odd, return `retreat`.
    */
-  val attack: UIO[Boolean]  = UIO.effectTotal(println("Attacking!")).const(true)
-  val retreat: UIO[Boolean] = UIO.effectTotal(println("Retreating!")).const(false)
+  val attack: UIO[Boolean]  = UIO.effectTotal(println("Attacking!")).as(true)
+  val retreat: UIO[Boolean] = UIO.effectTotal(println("Retreating!")).as(false)
   val action: UIO[Boolean]  = UIO(42) ?
 
   /**
@@ -349,9 +357,8 @@ object zio_operations {
   val nameAsk: Task[String] =
     Task
       .effect(println("What is your name?"))
-      .flatMap(
-        _ =>
-          Task.effect(scala.io.StdIn.readLine()).flatMap(name => Task.effect(println(s"Hello, $name")).map(_ => name))
+      .flatMap(_ =>
+        Task.effect(scala.io.StdIn.readLine()).flatMap(name => Task.effect(println(s"Hello, $name")).map(_ => name))
       )
 
   /**
@@ -561,7 +568,8 @@ object impure_to_pure {
   def decode2[E](read: IO[E, Byte]): IO[E, Either[Byte, Int]] = ???
 }
 
-object zio_interop extends DefaultRuntime {
+// fixme: make me object again
+trait zio_interop extends Platform {
 
   import scala.concurrent.ExecutionContext.global
   import scala.concurrent.Future
@@ -766,9 +774,7 @@ object zio_resources {
    * all content into a byte array (see Exercise 5).
    */
   def readFileTCF3(file: File): Task[List[Byte]] =
-    managedFile(file).use { inputStream =>
-      ???
-    }
+    managedFile(file).use(inputStream => ???)
 }
 
 object zio_environment {
@@ -937,7 +943,7 @@ object zio_environment {
    * Give the `configProgram` its dependencies by supplying it with both `Config`
    * and `Console` modules, and determine the type of the resulting effect.
    */
-  val provided = configProgram.provide(???) : ZIO[Any, Nothing, Int]
+  val provided = configProgram.provide(???): ZIO[Any, Nothing, Int]
 
   /**
    * EXERCISE 17
@@ -946,7 +952,7 @@ object zio_environment {
    * effect that has a dependency on `Config`:
    */
   val ConfigRuntime: Runtime[Config with Console] =
-    Runtime(??? : Config with Console, PlatformLive.Default)
+    Runtime(??? : Config with Console, Platform.default)
 
   /**
    * EXERCISE 18
@@ -990,10 +996,17 @@ object zio_environment {
      *
      * Create a production implementation of the `FileSystem` module.
      */
-    trait Live extends FileSystem with Console {
+    trait Live extends FileSystem with Console.Service {
       val filesystem: ??? = ???
     }
-    object Live extends Live with Console.Live
+
+    // fixme
+    object Live extends Live {
+      override def putStr(line: String): UIO[Unit]   = ???
+      override def putStrLn(line: String): UIO[Unit] = ???
+      override def getStrLn: IO[IOException, String] = ???
+
+    }
   }
 
   /**
@@ -1042,7 +1055,7 @@ object zio_environment {
    * Using `ZIO#provide` with the mock file system module, and a default
    * runtime, execute `fileProgram`.
    */
-  lazy val fileProgramTest: ??? = new DefaultRuntime {}.unsafeRun {
+  lazy val fileProgramTest: ??? = Runtime.default.unsafeRun {
     fileProgram.provide(???)
   }
 }
