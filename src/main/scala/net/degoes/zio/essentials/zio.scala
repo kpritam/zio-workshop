@@ -416,117 +416,127 @@ object zio_operations {
   }
 }
 
-// object zio_failure {
+object zio_failure {
 
-//   /**
-//    * EXERCISE 1
-//    *
-//    * Using `ZIO.fail` method, create an `IO[String, Int]` value that
-//    * represents a failure with a string error message, containing
-//    * a user-readable description of the failure.
-//    */
-//   val stringFailure: IO[String, Int] = ???
+  /**
+   * EXERCISE 1
+   *
+   * Using `ZIO.fail` method, create an `IO[String, Int]` value that
+   * represents a failure with a string error message, containing
+   * a user-readable description of the failure.
+   */
+  val stringFailure: IO[String, Int] = ZIO.fail("failed to process request")
 
-//   /**
-//    * EXERCISE 2
-//    *
-//    * Translate the following exception-throwing program into its ZIO equivalent.
-//    */
-//   def accessArr1[A](i: Int, a: Array[A]): A =
-//     if (i < 0 || i >= a.length)
-//       throw new IndexOutOfBoundsException(s"The index $i is out of bounds [0, ${a.length} )")
-//     else a(i)
+  /**
+   * EXERCISE 2
+   *
+   * Translate the following exception-throwing program into its ZIO equivalent.
+   */
+  def accessArr1[A](i: Int, a: Array[A]): A =
+    if (i < 0 || i >= a.length)
+      throw new IndexOutOfBoundsException(s"The index $i is out of bounds [0, ${a.length} )")
+    else a(i)
 
-//   def accessArr2[A](i: Int, a: Array[A]): IO[IndexOutOfBoundsException, A] =
-//     ???
+  def accessArr2[A](i: Int, a: Array[A]): IO[IndexOutOfBoundsException, A] =
+    if (i < 0 || i >= a.length)
+      ZIO.fail(new IndexOutOfBoundsException(s"The index $i is out of bounds [0, ${a.length} )"))
+    else ZIO.succeed(a(i))
 
-//   /**
-//    * EXERCISE 3
-//    *
-//    * Using `ZIO#fold`, recover from a division by zero error by supplying a recovery
-//    * value.
-//    */
-//   def divide(n: Int, d: Int): IO[ArithmeticException, Int] =
-//     if (d == 0) IO.fail(new ArithmeticException("Cannot divide by 0")) else IO.succeed(n / d)
-//   val recovered1: UIO[Option[Int]] = divide(100, 0) ?
+  /**
+   * EXERCISE 3
+   *
+   * Using `ZIO#fold`, recover from a division by zero error by supplying a recovery
+   * value.
+   */
+  def divide(n: Int, d: Int): IO[ArithmeticException, Int] =
+    if (d == 0) IO.fail(new ArithmeticException("Cannot divide by 0")) else IO.succeed(n / d)
+  val recovered1: UIO[Option[Int]] = divide(100, 0).fold(_ => None, Some(_))
 
-//   /**
-//    * EXERCISE 4
-//    *
-//    * Using `ZIO#foldM`, print out either an error message or the division.
-//    */
-//   def printError(err: String): UIO[Unit] = UIO(println(err))
-//   def printDivision(int: Int): UIO[Unit] = UIO(println("Division is: " + int))
-//   val recovered2: UIO[Unit]              = ???
+  /**
+   * EXERCISE 4
+   *
+   * Using `ZIO#foldM`, print out either an error message or the division.
+   */
+  def printError(err: String): UIO[Unit] = UIO(println(err))
+  def printDivision(int: Int): UIO[Unit] = UIO(println("Division is: " + int))
+  val recovered2: UIO[Unit]              = divide(100, 0).foldM(e => printError(e.getMessage), r => printDivision(r))
 
-//   /**
-//    * EXERCISE 5
-//    *
-//    * Using `ZIO#either`, recover from division by zero error by returning -1.
-//    */
-//   val recovered3: UIO[Int] = divide(100, 0) ?
+  /**
+   * EXERCISE 5
+   *
+   * Using `ZIO#either`, recover from division by zero error by returning -1.
+   */
+  val recovered3: UIO[Int] = divide(100, 0).either.map {
+    case Left(_)      => -1
+    case Right(value) => value
+  }
 
-//   /**
-//    * EXERCISE 6
-//    *
-//    * Using `ZIO#option`, recover from division by zero by returning -1.
-//    */
-//   val recovered4: UIO[Int] = divide(100, 0) ?
+  /**
+   * EXERCISE 6
+   *
+   * Using `ZIO#option`, recover from division by zero by returning -1.
+   */
+  val recovered4: UIO[Int] = divide(100, 0).option.map {
+    case None        => -1
+    case Some(value) => value
+  }
 
-//   /**
-//    * EXERCISE 7
-//    *
-//    * Using `ZIO#orElse`, attempt `firstChoice`, and fallback to `secondChoice` only
-//    * if `firstChoice` fails.
-//    */
-//   val firstChoice: IO[ArithmeticException, Int] = divide(100, 0)
-//   val secondChoice: UIO[Int]                    = IO.succeed(-1)
-//   val combined: UIO[Int]                        = ???
+  /**
+   * EXERCISE 7
+   *
+   * Using `ZIO#orElse`, attempt `firstChoice`, and fallback to `secondChoice` only
+   * if `firstChoice` fails.
+   */
+  val firstChoice: IO[ArithmeticException, Int] = divide(100, 0)
+  val secondChoice: UIO[Int]                    = IO.succeed(-1)
+  val combined: UIO[Int]                        = firstChoice.orElse(secondChoice)
 
-//   /**
-//    * EXERCISE 8
-//    *
-//    * Using `ZIO#catchAll`, recover from an error.
-//    */
-//   val caughtAll: UIO[Int] = divide(100, 0) ?
+  /**
+   * EXERCISE 8
+   *
+   * Using `ZIO#catchAll`, recover from an error.
+   */
+  val caughtAll: UIO[Int] = divide(100, 0).catchAll(_ => ZIO.succeed(-1))
 
-//   /**
-//    * EXERCISE 9
-//    *
-//    * Using `ZIO#catchSome`, recover from only `EmptyStringError` error.
-//    */
-//   case object EmptyStringError extends Throwable
-//   val readNumber: Task[Int] = UIO(scala.io.StdIn.readLine()).flatMap { input =>
-//     if (input == "") IO.fail(EmptyStringError)
-//     else IO.effect(input.toInt)
-//   }
-//   val caughtSome = readNumber ?
+  /**
+   * EXERCISE 9
+   *
+   * Using `ZIO#catchSome`, recover from only `EmptyStringError` error.
+   */
+  case object EmptyStringError extends Throwable
+  val readNumber: Task[Int] = UIO(scala.io.StdIn.readLine()).flatMap { input =>
+    if (input == "") IO.fail(EmptyStringError)
+    else IO.effect(input.toInt)
+  }
+  val caughtSome = readNumber.catchSome {
+    case EmptyStringError => ZIO.succeed(-1)
+  }
 
-//   /**
-//    * EXERCISE 10
-//    *
-//    * Using `IO.effectTotal`, import code that is really not total.
-//    */
-//   val defect1: UIO[Int] = "this is a short text".charAt(30) ?
+  /**
+   * EXERCISE 10
+   *
+   * Using `IO.effectTotal`, import code that is really not total.
+   */
+  val defect1: UIO[Int] = IO.effectTotal("this is a short text".charAt(30))
 
-//   /**
-//    * EXERCISE 11
-//    *
-//    * Using `ZIO#sandbox`, recover from the defect `defect1`.
-//    *
-//    */
-//   val caught1: UIO[Int] = defect1 ?
+  /**
+   * EXERCISE 11
+   *
+   * Using `ZIO#sandbox`, recover from the defect `defect1`.
+   *
+   */
+  val caught1: UIO[Int] = defect1.sandbox.catchAll(_ => ZIO.succeed(-1))
 
-//   /**
-//    * EXERCISE 12
-//    *
-//    * Using the `ZIO#catchAll` method, convert any exceptions in reading the
-//    * specified file into an empty list.
-//    */
-//   def readFile(file: File): UIO[List[String]] =
-//     Task(Source.fromFile(file).getLines.toList) ?
+  /**
+   * EXERCISE 12
+   *
+   * Using the `ZIO#catchAll` method, convert any exceptions in reading the
+   * specified file into an empty list.
+   */
+  def readFile(file: File): UIO[List[String]] =
+    Task(Source.fromFile(file).getLines.toList).catchAll(_ => ZIO.succeed(List.empty))
 
-// }
+}
 
 // object impure_to_pure {
 
