@@ -185,8 +185,8 @@ object zio_values {
    * based API into a ZIO effect.
    */
   val scheduledExecutor = Executors.newScheduledThreadPool(1)
-  def sleep(l: Long, u: TimeUnit): ZIO[Any, Nothing, Unit] =
-    ZIO.effectAsync(cb => scheduledExecutor.schedule(new Runnable { def run(): Unit = cb(ZIO.unit) }, l, u))
+  def sleep(l: Long, u: TimeUnit): UIO[Unit] =
+    UIO.effectAsync(cb => scheduledExecutor.schedule(new Runnable { def run(): Unit = cb(UIO.unit) }, l, u))
 
   /**
    * EXERCISE 10
@@ -221,12 +221,11 @@ object zio_values {
    *  ZIO (such as `DefaultRuntime`) and call `unsafeRun`, or write your
    * pure main function inside `App`.
    */
-  object Example {
-    val runtime               = Runtime.default
+  object Example extends BootstrapRuntime {
     val sayHelloIO: UIO[Unit] = putStrLn("Hello ZIO!")
 
     //run sayHelloIO using `unsafeRun`
-    val sayHello: Unit = runtime.unsafeRun(sayHelloIO)
+    val sayHello: Unit = unsafeRun(sayHelloIO)
   }
 
   /**
@@ -309,7 +308,7 @@ object zio_operations {
     }
 
   def repeatN2[E](n: Int, action: IO[E, Unit]): IO[E, Unit] =
-    if (n <= 0) ZIO.unit else action *> repeatN2(n - 1, action)
+    if (n <= 0) action else action *> repeatN2(n - 1, action)
 
   /**
    * EXERCISE 6
@@ -393,11 +392,12 @@ object zio_operations {
     for {
       guess <- random.nextInt(10)
       _     <- putStrLn("Enter a number between 0 - 5: ")
-      input <- getStrLn.map(_.toInt).onError { _ =>
-                putStrLn("You didn't enter an integer!") *> ZIO.effectTotal(playGame1())
-              }
-      _ <- if (input == guess) putStrLn("You guessed right! The number was " + input)
-          else putStr("You guessed wrong! The number was " + guess)
+      input <- getStrLn.flatMap(i => ZIO.effect(i.toInt)).onError { _ =>
+        putStrLn("You didn't enter an integer!") *> ZIO.effectTotal(playGame1())
+      }
+      _ <-
+        if (input == guess) putStrLn("You guessed right! The number was " + input)
+        else putStr("You guessed wrong! The number was " + guess)
 
     } yield ()
   }
@@ -407,11 +407,13 @@ object zio_operations {
     for {
       guess <- random.nextInt(5)
       _     <- putStrLn("Enter a number between 0 - 5: ")
-      input <- getStrLn
-                .flatMap(i => ZIO.effect(i.toInt))
-                .orElse(putStrLn("You didn't enter an integer!") *> playGame2)
-      _ <- if (input == guess) putStrLn("You guessed right! The number was " + input)
-          else putStrLn("You guessed wrong! The number was " + guess)
+      input <-
+        getStrLn
+          .flatMap(i => ZIO.effect(i.toInt))
+          .orElse(putStrLn("You didn't enter an integer!") *> playGame2)
+      _ <-
+        if (input == guess) putStrLn("You guessed right! The number was " + input)
+        else putStrLn("You guessed wrong! The number was " + guess)
     } yield ()
   }
 }
@@ -538,69 +540,106 @@ object zio_failure {
 
 }
 
-// object impure_to_pure {
+object impure_to_pure {
 
-//   /**
-//    * EXERCISE 1
-//    *
-//    * Translate the following procedural program into ZIO.
-//    */
-//   def getName1(print: String => Unit, read: () => String): Option[String] = {
-//     print("Do you want to enter your name?")
-//     read().toLowerCase.take(1) match {
-//       case "y" => Some(read())
-//       case _   => None
-//     }
-//   }
-//   def getName2[E](print: String => IO[E, Unit], read: IO[E, String]): IO[E, Option[String]] =
-//     ???
+  /**
+   * EXERCISE 1
+   *
+   * Translate the following procedural program into ZIO.
+   */
+  def getName1(print: String => Unit, read: () => String): Option[String] = {
+    print("Do you want to enter your name?")
+    read().toLowerCase.take(1) match {
+      case "y" => Some(read())
+      case _   => None
+    }
+  }
+  def getName2[E](print: String => IO[E, Unit], read: IO[E, String]): IO[E, Option[String]] =
+    for {
+      _     <- Task.effectTotal(print("Do you want to enter your name?"))
+      input <- read
+      out <- input.toLowerCase.take(1) match {
+        case "y" => read.option
+        case _   => ZIO.succeed(None)
+      }
+    } yield out
 
-//   /**
-//    * EXERCISE 2
-//    *
-//    * Translate the following procedural program into ZIO.
-//    */
-//   def ageExplainer1(): Unit = {
-//     println("What is your age?")
-//     scala.util.Try(scala.io.StdIn.readLine().toInt).toOption match {
-//       case Some(age) =>
-//         if (age < 12) println("You are a kid")
-//         else if (age < 20) println("You are a teenager")
-//         else if (age < 30) println("You are a grownup")
-//         else if (age < 50) println("You are an adult")
-//         else if (age < 80) println("You are a mature adult")
-//         else if (age < 100) println("You are elderly")
-//         else println("You are probably lying.")
-//       case None =>
-//         println("That's not an age, try again")
+  /**
+   * EXERCISE 2
+   *
+   * Translate the following procedural program into ZIO.
+   */
+  def ageExplainer1(): Unit = {
+    println("What is your age?")
+    scala.util.Try(scala.io.StdIn.readLine().toInt).toOption match {
+      case Some(age) =>
+        if (age < 12) println("You are a kid")
+        else if (age < 20) println("You are a teenager")
+        else if (age < 30) println("You are a grownup")
+        else if (age < 50) println("You are an adult")
+        else if (age < 80) println("You are a mature adult")
+        else if (age < 100) println("You are elderly")
+        else println("You are probably lying.")
+      case None =>
+        println("That's not an age, try again")
 
-//         ageExplainer1()
-//     }
-//   }
+        ageExplainer1()
+    }
+  }
 
-//   def ageExplainer2: UIO[Unit] = ???
+  def ageExplainer2: UIO[Unit] = {
+    def putStrLn(msg: String) = Task.effectTotal(msg)
+    def getStrLn              = Task.effect(scala.io.StdIn.readLine())
+    for {
+      _   <- putStrLn("What is your age?")
+      age <- getStrLn.flatMap(i => ZIO.effect(i.toInt)).option
+      _ <- age match {
+        case Some(a) =>
+          if (a < 12) putStrLn("You are a kid")
+          else if (a < 20) putStrLn("You are a teenager")
+          else if (a < 30) putStrLn("You are a grownup")
+          else if (a < 50) putStrLn("You are an adult")
+          else if (a < 80) putStrLn("You are a mature adult")
+          else if (a < 100) putStrLn("You are elderly")
+          else putStrLn("You are probably lying.")
+        case None => putStrLn("That's not an age, try again")
+      }
+      _ <- ageExplainer2
+    } yield ()
+  }
 
-//   /**
-//    * EXERCISE 3
-//    *
-//    * Translate the following procedural program into ZIO.
-//    */
-//   def decode1(read: () => Byte): Either[Byte, Int] = {
-//     val b = read()
-//     if (b < 0) Left(b)
-//     else {
-//       Right(
-//         b.toInt +
-//           (read().toInt << 8) +
-//           (read().toInt << 16) +
-//           (read().toInt << 24)
-//       )
-//     }
-//   }
-//   def decode2[E](read: IO[E, Byte]): IO[E, Either[Byte, Int]] = ???
-// }
+  /**
+   * EXERCISE 3
+   *
+   * Translate the following procedural program into ZIO.
+   */
+  def decode1(read: () => Byte): Either[Byte, Int] = {
+    val b = read()
+    if (b < 0) Left(b)
+    else
+      Right(
+        b.toInt +
+          (read().toInt << 8) +
+          (read().toInt << 16) +
+          (read().toInt << 24)
+      )
+  }
+  def decode2[E](read: IO[E, Byte]): IO[E, Either[Byte, Int]] =
+    for {
+      b <- read
+      decoded <-
+        if (b < 0) ZIO.succeed(Left(b))
+        else
+          for {
+            b1 <- read.map(_.toInt << 8)
+            b2 <- read.map(_.toInt << 16)
+            b3 <- read.map(_.toInt << 24)
+          } yield Right(b.toInt + b1 + b2 + b3)
 
-// // fixme: make me object again
+    } yield decoded
+}
+
+// fixme: make me object again
 // trait zio_interop extends Platform {
 
 //   import scala.concurrent.ExecutionContext.global
