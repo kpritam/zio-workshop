@@ -639,69 +639,68 @@ object impure_to_pure {
     } yield decoded
 }
 
-// fixme: make me object again
-// trait zio_interop extends Platform {
+object zio_interop extends BootstrapRuntime {
 
-//   import scala.concurrent.ExecutionContext.global
-//   import scala.concurrent.Future
+  import scala.concurrent.ExecutionContext.global
+  import scala.concurrent.Future
 
-//   /**
-//    * EXERCISE 1
-//    *
-//    * Using `Fiber#toFuture`, convert the following `Fiber` into a `Future`.
-//    */
-//   val fiber: Fiber[Throwable, Int] = Fiber.succeed(1)
-//   val fToFuture: UIO[Future[Int]]  = ???
+  /**
+   * EXERCISE 1
+   *
+   * Using `Fiber#toFuture`, convert the following `Fiber` into a `Future`.
+   */
+  val fiber: Fiber[Throwable, Int] = Fiber.succeed(1)
+  val fToFuture: UIO[Future[Int]]  = fiber.toFuture
 
-//   /**
-//    * EXERCISE 2
-//    *
-//    * Using `Fiber.fromFuture`, convert the following `Future` into a `Fiber`.
-//    */
-//   lazy val future1                     = Future(Thread.sleep(1000))(global)
-//   val fToFiber: Fiber[Throwable, Unit] = ???
+  /**
+   * EXERCISE 2
+   *
+   * Using `Fiber.fromFuture`, convert the following `Future` into a `Fiber`.
+   */
+  lazy val future1                     = Future(Thread.sleep(1000))(global)
+  val fToFiber: Fiber[Throwable, Unit] = Fiber.fromFuture(future1)
 
-//   /**
-//    * EXERCISE 3
-//    *
-//    * Using `Task#toFuture`, unsafely convert the following `Task` into `Future`.
-//    */
-//   val task1: Task[Int]       = IO.effect("wrong".toInt)
-//   val tToFuture: Future[Int] = task1 ?
+  /**
+   * EXERCISE 3
+   *
+   * Using `Task#toFuture`, unsafely convert the following `Task` into `Future`.
+   */
+  val task1: Task[Int]       = IO.effect("wrong".toInt)
+  val tToFuture: Future[Int] = unsafeRun(task1.toFuture).future
 
-//   /**
-//    * EXERCISE 4
-//    *
-//    * Use `Task.fromFuture` to convert the following Scala `Future` into a
-//    * ZIO `Task`.
-//    */
-//   lazy val future2        = Future.successful("Hello World")
-//   val task2: Task[String] = ???
+  /**
+   * EXERCISE 4
+   *
+   * Use `Task.fromFuture` to convert the following Scala `Future` into a
+   * ZIO `Task`.
+   */
+  lazy val future2        = Future.successful("Hello World")
+  val task2: Task[String] = Task.fromFuture(_ => future2)
 
-//   /**
-//    * EXERCISE 5
-//    *
-//    * Use `Task.fromTry` to convert the `Try` into a ZIO `Task`.
-//    */
-//   val tryValue  = scala.util.Failure(new Throwable("Uh oh"))
-//   val tryEffect = ZIO.fromTry(???)
+  /**
+   * EXERCISE 5
+   *
+   * Use `Task.fromTry` to convert the `Try` into a ZIO `Task`.
+   */
+  val tryValue  = scala.util.Failure(new Throwable("Uh oh"))
+  val tryEffect = ZIO.fromTry(tryValue)
 
-//   /**
-//    * EXERCISE 6
-//    *
-//    * Use `IO.fromOption` to convert the `Option` into a ZIO `IO`.
-//    */
-//   val optionValue  = Some("foo")
-//   val optionEffect = ZIO.fromOption(???)
+  /**
+   * EXERCISE 6
+   *
+   * Use `IO.fromOption` to convert the `Option` into a ZIO `IO`.
+   */
+  val optionValue  = Some("foo")
+  val optionEffect = ZIO.fromOption(optionValue)
 
-//   /**
-//    * EXERCISE 7
-//    *
-//    * Use `IO.fromEither` to convert the `Either` into a ZIO `IO`.
-//    */
-//   val eitherValue  = Right("foo")
-//   val eitherEffect = ZIO.fromEither(???)
-// }
+  /**
+   * EXERCISE 7
+   *
+   * Use `IO.fromEither` to convert the `Either` into a ZIO `IO`.
+   */
+  val eitherValue  = Right("foo")
+  val eitherEffect = ZIO.fromEither(eitherValue)
+}
 
 // /**
 //  * ZIO's version of try / finally, try-with-resources.
