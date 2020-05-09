@@ -702,150 +702,180 @@ object zio_interop extends BootstrapRuntime {
   val eitherEffect = ZIO.fromEither(eitherValue)
 }
 
-// /**
-//  * ZIO's version of try / finally, try-with-resources.
-//  */
-// object zio_resources {
-//   import java.io.{ File, FileInputStream }
-//   class InputStream private (is: FileInputStream) {
-//     def read: IO[Exception, Option[Byte]] =
-//       IO.effectTotal(is.read).map(i => if (i < 0) None else Some(i.toByte))
-//     def close: IO[Exception, Unit] =
-//       IO.effectTotal(is.close())
-//   }
-//   object InputStream {
-//     def openFile(file: File): IO[Exception, InputStream] =
-//       IO.effectTotal(new InputStream(new FileInputStream(file)))
-//   }
+/**
+ * ZIO's version of try / finally, try-with-resources.
+ */
+object zio_resources {
+  import java.io.{ File, FileInputStream }
+  class InputStream private (is: FileInputStream) {
+    def read: IO[Exception, Option[Byte]] = IO.effectTotal(is.read).map(i => if (i < 0) None else Some(i.toByte))
+    def close: UIO[Unit]                  = IO.effectTotal(is.close())
+  }
+  object InputStream {
+    def openFile(file: File): IO[Exception, InputStream] = IO.effectTotal(new InputStream(new FileInputStream(file)))
+  }
 
-//   /**
-//    * This following program is the classic paradigm for resource handling using try / finally
-//    */
-//   object classic {
-//     trait Handle
-//     def openFile(file: String): Handle        = ???
-//     def closeFile(handle: Handle): Unit       = ???
-//     def readFile(handle: Handle): Array[Byte] = ???
+  /**
+   * This following program is the classic paradigm for resource handling using try / finally
+   */
+  object classic {
+    trait Handle
+    def openFile(file: String): Handle        = ???
+    def closeFile(handle: Handle): Unit       = ???
+    def readFile(handle: Handle): Array[Byte] = ???
 
-//     // Classic paradigm for safe resource handling using
-//     // try / finally:
-//     def safeResource(file: String): Unit = {
-//       var handle: Handle = null.asInstanceOf[Handle]
+    // Classic paradigm for safe resource handling using
+    // try / finally:
+    def safeResource(file: String): Unit = {
+      var handle: Handle = null.asInstanceOf[Handle]
 
-//       try {
-//         handle = openFile(file)
+      try {
+        handle = openFile(file)
 
-//         readFile(handle)
-//       } finally if (handle != null) closeFile(handle)
-//     }
+        readFile(handle)
+      } finally if (handle != null) closeFile(handle)
+    }
 
-//     def finallyPuzzler(): Unit =
-//       try {
-//         try throw new Error("e1")
-//         finally throw new Error("e2")
-//       } catch {
-//         case e: Error => println(e)
-//       }
-//   }
+    def finallyPuzzler(): Unit =
+      try try throw new Error("e1")
+      finally throw new Error("e2")
+      catch {
+        case e: Error => println(e)
+      }
+  }
 
-//   /**
-//    * EXERCISE 1
-//    *
-//    * Rewrite the following procedural program to ZIO, using `IO.fail` and the
-//    * `ensuring` method.
-//    */
-//   var i = 0
-//   def noChange1(): Unit =
-//     try {
-//       i += 1
-//       throw new Exception("Boom!")
-//     } finally i -= 1
+  /**
+   * EXERCISE 1
+   *
+   * Rewrite the following procedural program to ZIO, using `IO.fail` and the
+   * `ensuring` method.
+   */
+  var i = 0
+  def noChange1(): Unit =
+    try {
+      i += 1
+      throw new Exception("Boom!")
+    } finally i -= 1
 
-//   val noChange2: Task[Unit] = ???
+  val noChange2: Task[Unit] =
+    ZIO.effectTotal({ i += 1 }).flatMap(_ => ZIO.fail(new Exception("Boom!"))).ensuring(ZIO.effectTotal({ i = i - 1 }))
 
-//   /**
-//    * EXERCISE 2
-//    *
-//    * Rewrite the following procedural program to ZIO, using `IO.fail` and the
-//    * `ensuring` method of the `IO` object.
-//    */
-//   def tryCatch1(): Unit =
-//     try throw new Exception("Uh oh")
-//     finally println("On the way out...")
-//   val tryCatch2: Task[Unit] = ???
+  /**
+   * EXERCISE 2
+   *
+   * Rewrite the following procedural program to ZIO, using `IO.fail` and the
+   * `ensuring` method of the `IO` object.
+   */
+  def tryCatch1(): Unit =
+    try throw new Exception("Uh oh")
+    finally println("On the way out...")
+  val tryCatch2: Task[Unit] =
+    ZIO
+      .fail(new Exception("Uh oh"))
+      .ensuring(Task.effectTotal(println("On the way out...")))
 
-//   /**
-//    * EXERCISE 3
-//    *
-//    * Rewrite the `readFile1` function to use `bracket` so resources can be
-//    * safely cleaned up in the event of errors, defects, or interruption.
-//    */
-//   def readFile1(file: File): IO[Exception, List[Byte]] = {
-//     def readAll(is: InputStream, acc: List[Byte]): IO[Exception, List[Byte]] =
-//       is.read.flatMap {
-//         case None       => IO.succeed(acc.reverse)
-//         case Some(byte) => readAll(is, byte :: acc)
-//       }
+  /**
+   * EXERCISE 3
+   *
+   * Rewrite the `readFile1` function to use `bracket` so resources can be
+   * safely cleaned up in the event of errors, defects, or interruption.
+   */
+  def readFile1(file: File): IO[Exception, List[Byte]] = {
+    def readAll(is: InputStream, acc: List[Byte]): IO[Exception, List[Byte]] =
+      is.read.flatMap {
+        case None       => IO.succeed(acc.reverse)
+        case Some(byte) => readAll(is, byte :: acc)
+      }
 
-//     for {
-//       stream <- InputStream.openFile(file)
-//       bytes  <- readAll(stream, Nil)
-//       _      <- stream.close
-//     } yield bytes
-//   }
+    for {
+      stream <- InputStream.openFile(file)
+      bytes  <- readAll(stream, Nil)
+      _      <- stream.close
+    } yield bytes
+  }
 
-//   def readFile2(file: File): IO[Exception, List[Byte]] = ???
+  def readFile2(file: File): IO[Exception, List[Byte]] = {
+    def readAll(is: InputStream, acc: List[Byte]): IO[Exception, List[Byte]] =
+      is.read.flatMap {
+        case None       => IO.succeed(acc.reverse)
+        case Some(byte) => readAll(is, byte :: acc)
+      }
 
-//   /**
-//    * EXERCISE 4
-//    *
-//    * Implement the `tryCatchFinally` method using `bracket` or `ensuring`.
-//    */
-//   def tryCatchFinally[E, A](try0: IO[E, A])(catch0: PartialFunction[E, IO[E, A]])(finally0: UIO[Unit]): IO[E, A] = ???
+    ZIO.bracket(InputStream.openFile(file))(_.close)(readAll(_, List.empty))
+  }
 
-//   /**
-//    * EXERCISE 5
-//    *
-//    * Use the `bracket` method to rewrite the following snippet to ZIO.
-//    */
-//   def readFileTCF1(file: File): List[Byte] = {
-//     var fis: FileInputStream = null
+  /**
+   * EXERCISE 4
+   *
+   * Implement the `tryCatchFinally` method using `bracket` or `ensuring`.
+   */
+  def tryCatchFinally[E, A](try0: IO[E, A])(catch0: PartialFunction[E, IO[E, A]])(finally0: UIO[Unit]): IO[E, A] =
+    try0.catchSome(catch0).ensuring(finally0)
 
-//     try {
-//       fis = new FileInputStream(file)
-//       val array = Array.ofDim[Byte](file.length.toInt)
-//       fis.read(array)
-//       array.toList
-//     } catch {
-//       case e: java.io.IOException => Nil
-//     } finally if (fis != null) fis.close()
-//   }
-//   def readFileTCF2(file: File): Task[List[Byte]] = ???
+  /**
+   * EXERCISE 5
+   *
+   * Use the `bracket` method to rewrite the following snippet to ZIO.
+   */
+  def readFileTCF1(file: File): List[Byte] = {
+    var fis: FileInputStream = null
 
-//   /**
-//    *`Managed[E, A]` is a managed resource of type `A`, which may be used by
-//    * invoking the `use` method of the resource. The resource will be automatically
-//    * acquired before the resource is used, and automatically released after the
-//    * resource is used.
-//    */
-//   /**
-//    * EXERCISE 6
-//    *
-//    * Using the `Managed.make` constructor, create a `Managed` resource
-//    * for a `FileInputStream`.
-//    */
-//   def managedFile(file: File): Managed[Throwable, FileInputStream] =
-//     ???
+    try {
+      fis = new FileInputStream(file)
+      val array = Array.ofDim[Byte](file.length.toInt)
+      fis.read(array)
+      array.toList
+    } catch {
+      case e: java.io.IOException => Nil
+    } finally if (fis != null) fis.close()
+  }
 
-//   /**
-//    * EXERCISE 7
-//    *
-//    * Use the `Managed#use` method to consume the `FileInputStream`, reading
-//    * all content into a byte array (see Exercise 5).
-//    */
-//   def readFileTCF3(file: File): Task[List[Byte]] =
-//     managedFile(file).use(inputStream => ???)
-// }
+  def readFileTCF2(file: File): Task[List[Byte]] = {
+    val fis = ZIO.effect(new FileInputStream(file))
+    def read(fis: FileInputStream) =
+      ZIO.effect {
+        val array = Array.ofDim[Byte](file.length.toInt)
+        fis.read(array)
+        array.toList
+      }
+    def close(fis: FileInputStream) = ZIO.effectTotal(fis.close())
+
+    ZIO.bracket(fis)(close)(read).catchSome {
+      case e: java.io.IOException => ZIO.succeed(Nil)
+    }
+  }
+
+  /**
+   *`Managed[E, A]` is a managed resource of type `A`, which may be used by
+   * invoking the `use` method of the resource. The resource will be automatically
+   * acquired before the resource is used, and automatically released after the
+   * resource is used.
+   */
+  /**
+   * EXERCISE 6
+   *
+   * Using the `Managed.make` constructor, create a `Managed` resource
+   * for a `FileInputStream`.
+   */
+  def managedFile(file: File): Managed[Throwable, FileInputStream] =
+    Managed.make(IO.effect(new FileInputStream(file)))(fis => UIO.effectTotal(fis.close))
+
+  /**
+   * EXERCISE 7
+   *
+   * Use the `Managed#use` method to consume the `FileInputStream`, reading
+   * all content into a byte array (see Exercise 5).
+   */
+  def readFileTCF3(file: File): Task[List[Byte]] = {
+    def read(fis: FileInputStream) =
+      ZIO.effect {
+        val array = Array.ofDim[Byte](file.length.toInt)
+        fis.read(array)
+        array.toList
+      }
+    managedFile(file).use(read)
+  }
+}
 
 // object zio_environment {
 //   import zio.console.Console
