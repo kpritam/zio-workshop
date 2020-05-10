@@ -1,8 +1,10 @@
 // Copyright(C) 2019 - John A. De Goes. All rights reserved.
 
 package net.degoes.zio
+
 package essentials
 
+import java.time.DateTimeException
 import java.io.File
 import java.util.concurrent.{ Executors, TimeUnit }
 
@@ -877,285 +879,303 @@ object zio_resources {
   }
 }
 
-// object zio_environment {
-//   import zio.console.Console
-//   import zio.console
-//   import zio.clock.Clock
-//   import zio.clock
-//   import zio.random.Random
-//   import zio.random
+object zio_environment {
+  import zio.console.Console
+  import zio.console._
+  import zio.clock.Clock
+  import zio.clock
+  import zio.random.Random
+  import zio.random
+  import zio.system.System
+  import zio.system
 
-//   /**
-//    * The Default Modules in ZIO:
-//    *
-//    * Console   (putStrLn, getStrLn)
-//    * Clock     (currentTime, sleep, nanoTime)
-//    * Random    (nextInt, nextBoolean, ...)
-//    * System    (env)
-//    * Blocking  (blocking, effectBlocking)
-//    * Scheduler (scheduledExecutor)
-//    */
-//   /**
-//    * EXERCISE 1
-//    *
-//    * Write the type of a program that requires `scalaz.zio.clock.Clock` and which
-//    * could fail with `E` or succeed with `A`.
-//    */
-//   type ClockIO[E, A] = ???
+  /**
+   * The Default Modules in ZIO:
+   *
+   * Console   (putStrLn, getStrLn)
+   * Clock     (currentTime, sleep, nanoTime)
+   * Random    (nextInt, nextBoolean, ...)
+   * System    (env)
+   * Blocking  (blocking, effectBlocking)
+   * Scheduler (scheduledExecutor)
+   */
+  /**
+   * EXERCISE 1
+   *
+   * Write the type of a program that requires `scalaz.zio.clock.Clock` and which
+   * could fail with `E` or succeed with `A`.
+   */
+  type ClockIO[E, A] = ZIO[Clock, E, A]
 
-//   /**
-//    * EXERCISE 2
-//    *
-//    * Write the type of a program that requires `scalaz.zio.console.Console` and
-//    * which could fail with `E` or succeed with A`:
-//    */
-//   type ConsoleIO[E, A] = ???
+  /**
+   * EXERCISE 2
+   *
+   * Write the type of a program that requires `scalaz.zio.console.Console` and
+   * which could fail with `E` or succeed with A`:
+   */
+  type ConsoleIO[E, A] = ZIO[Console, E, A]
 
-//   /**
-//    * EXERCISE 3
-//    *
-//    * Write the type of a program that requires `scalaz.zio.system.System` and
-//    * which could fail with E or succeed with A:
-//    */
-//   type SystemIO[E, A] = ???
+  /**
+   * EXERCISE 3
+   *
+   * Write the type of a program that requires `scalaz.zio.system.System` and
+   * which could fail with E or succeed with A:
+   */
+  type SystemIO[E, A] = ZIO[System, E, A]
 
-//   /**
-//    * EXERCISE 4
-//    *
-//    * Write the type of a program that requires `scalaz.zio.random.Random` and
-//    * which could fail with `E` or succeed with `A`:
-//    */
-//   type RandomIO[E, A] = ???
+  /**
+   * EXERCISE 4
+   *
+   * Write the type of a program that requires `scalaz.zio.random.Random` and
+   * which could fail with `E` or succeed with `A`:
+   */
+  type RandomIO[E, A] = ZIO[Random, E, A]
 
-//   /**
-//    * EXERCISE 5
-//    *
-//    * Write the type of a program that requires `Clock` and `System` and which
-//    * could fail with `E` or succeed with `A`:
-//    */
-//   type ClockWithSystemIO[E, A] = ???
+  /**
+   * EXERCISE 5
+   *
+   * Write the type of a program that requires `Clock` and `System` and which
+   * could fail with `E` or succeed with `A`:
+   */
+  type ClockWithSystemIO[E, A] = ZIO[Clock with System, E, A]
 
-//   /**
-//    * EXERCISE 6
-//    *
-//    * Write the type of a program that requires `Console` and `System` and
-//    * which could fail with `E` or succeed with `A`:
-//    */
-//   type ConsoleWithSystemIO[E, A] = ???
+  /**
+   * EXERCISE 6
+   *
+   * Write the type of a program that requires `Console` and `System` and
+   * which could fail with `E` or succeed with `A`:
+   */
+  type ConsoleWithSystemIO[E, A] = ZIO[Console with System, E, A]
 
-//   /**
-//    * EXERCISE 7
-//    *
-//    * Write the type of a program that requires `Clock`, `System` and `Random`
-//    * and which could fail with `E` or succeed with `A`:
-//    */
-//   type ClockWithSystemWithRandom[E, A] = ???
+  /**
+   * EXERCISE 7
+   *
+   * Write the type of a program that requires `Clock`, `System` and `Random`
+   * and which could fail with `E` or succeed with `A`:
+   */
+  type ClockWithSystemWithRandom[E, A] = ZIO[Clock with System with Random, E, A]
 
-//   /**
-//    * EXERCISE 8
-//    *
-//    * Write the type of a program that requires `Clock`, `Console`, `System` and
-//    * `Random` and which could fail with `E` or succeed with `A`:
-//    */
-//   type ClockWithConsoleWithSystemWithRandom[E, A] = ???
+  /**
+   * EXERCISE 8
+   *
+   * Write the type of a program that requires `Clock`, `Console`, `System` and
+   * `Random` and which could fail with `E` or succeed with `A`:
+   */
+  type ClockWithConsoleWithSystemWithRandom[E, A] = ZIO[Clock with Console with System with Random, E, A]
 
-//   /**
-//    * EXERCISE 9
-//    *
-//    * Using `zio.console.putStrLn`, write a hello world program, and identify
-//    * the correct ZIO type to use.
-//    */
-//   val helloWorld: ZIO[???, ???, ???] = ???
+  /**
+   * EXERCISE 9
+   *
+   * Using `zio.console.putStrLn`, write a hello world program, and identify
+   * the correct ZIO type to use.
+   */
+  val helloWorld: ZIO[Console, Nothing, Unit] = putStrLn("Hello World")
 
-//   /**
-//    * EXERCISE 10
-//    *
-//    * Using `zio.console.getStrLn` and `zio.console.putStrLn`, create an
-//    * interactive program and identify the correct ZIO type to use.
-//    */
-//   def interactiveProgram: ZIO[???, ???, ???] = ???
+  /**
+   * EXERCISE 10
+   *
+   * Using `zio.console.getStrLn` and `zio.console.putStrLn`, create an
+   * interactive program and identify the correct ZIO type to use.
+   */
+  def interactiveProgram: ZIO[Console, IOException, String] = getStrLn
 
-//   /**
-//    * EXERCISE 11
-//    *
-//    * In a for comprehension, call various methods in zio.clock._, zio.console._,
-//    * and zio.random._, and identify the composite return type.
-//    */
-//   val program = ???
+  /**
+   * EXERCISE 11
+   *
+   * In a for comprehension, call various methods in zio.clock._, zio.console._,
+   * and zio.random._, and identify the composite return type.
+   */
+  val program: ZIO[Clock with Console with Random, DateTimeException, Unit] = for {
+    time  <- clock.currentDateTime
+    rand  <- random.nextInt(10)
+    _     <- putStrLn("Guess the number between 0-10")
+    guess <- getStrLn.flatMap(i => ZIO.effect(i.toInt)).orElse(program)
+    _ <-
+      if (guess == rand) putStrLn(s"[$time] You guessed it correctly")
+      else putStrLn(s"[$time] Wrong guess! Correct number was $rand")
+  } yield ()
 
-//   /**
-//    * Build a new Service called `Configuration`
-//    * - define the module
-//    * - define the interface
-//    * - define the helper functions (host, port)
-//    * - implement a trait `Live` that extends the module.
-//    * - implement all helper functions.
-//    */
-//   /**
-//    * EXERCISE 12
-//    *
-//    * Build a `Config` module that has a reference to a `Config.Service` trait.
-//    */
-//   trait Config {
-//     val config: Config.Service
-//   }
+  /**
+   * Build a new Service called `Configuration`
+   * - define the module
+   * - define the interface
+   * - define the helper functions (host, port)
+   * - implement a trait `Live` that extends the module.
+   * - implement all helper functions.
+   */
+  /**
+   * EXERCISE 12
+   *
+   * Build a `Config` module that has a reference to a `Config.Service` trait.
+   */
+  type Config = Has[Config.Service]
+  object Config {
 
-//   object Config {
-//     // Service: definition of the methods provided by module:
-//     trait Service {
-//       val port: UIO[Int]
-//       val host: UIO[String]
-//     }
+    // Service: definition of the methods provided by module:
+    trait Service {
+      val port: UIO[Int]
+      val host: UIO[String]
+    }
+    object Service {
+      val live = new Service {
+        override val port: zio.UIO[Int]    = ZIO.succeed(8080)
+        override val host: zio.UIO[String] = ZIO.succeed("localhost")
+      }
+    }
 
-//     /**
-//      * EXERCISE 13
-//      *
-//      * Implement a production version of the `Config` module.
-//      */
-//     trait Live extends Config {
-//       val config: ??? = ???
-//     }
-//     object Live extends Live
-//   }
+    /**
+     * EXERCISE 13
+     *
+     * Implement a production version of the `Config` module.
+     */
+    val live = ZLayer.succeed(Service.live)
+  }
 
-//   /**
-//    * EXERCISE 14
-//    *
-//    * Using `ZIO.accessM`, implement helpers, which access the `Config` module
-//    * and delegate to the functions inside the `Config` service.
-//    */
-//   object helpers {
-//     val port: ZIO[Config, Nothing, Int]    = ZIO.accessM[Config](_.config.port)
-//     val host: ZIO[Config, Nothing, String] = ZIO.accessM[Config](_.config.host)
-//   }
+  /**
+   * EXERCISE 14
+   *
+   * Using `ZIO.accessM`, implement helpers, which access the `Config` module
+   * and delegate to the functions inside the `Config` service.
+   */
+  object helpers {
+    //accessor methods
 
-//   /**
-//    * EXERCISE 15
-//    *
-//    * Write a program that depends on `Config` and `Console` and use the Scala
-//    * compiler to infer the correct type.
-//    */
-//   val configProgram: ZIO[Console with Config, Nothing, Int] = ???
+    val port: ZIO[Config, Nothing, Int]    = ZIO.accessM(_.get.port)
+    val host: ZIO[Config, Nothing, String] = ZIO.accessM(_.get.host)
+  }
 
-//   /**
-//    * EXERCISE 16
-//    *
-//    * Give the `configProgram` its dependencies by supplying it with both `Config`
-//    * and `Console` modules, and determine the type of the resulting effect.
-//    */
-//   val provided = configProgram.provide(???): ZIO[Any, Nothing, Int]
+  /**
+   * EXERCISE 15
+   *
+   * Write a program that depends on `Config` and `Console` and use the Scala
+   * compiler to infer the correct type.
+   */
+  val configProgram: ZIO[Console with Config, Nothing, Int] = for {
+    port <- helpers.port
+    host <- helpers.host
+    _    <- putStr(s"URL is http://$host:$port")
+  } yield port
 
-//   /**
-//    * EXERCISE 17
-//    *
-//    * Create a `Runtime[Config with Console]` that can be used to run any
-//    * effect that has a dependency on `Config`:
-//    */
-//   val ConfigRuntime: Runtime[Config with Console] =
-//     Runtime(??? : Config with Console, Platform.default)
+  /**
+   * EXERCISE 16
+   *
+   * Give the `configProgram` its dependencies by supplying it with both `Config`
+   * and `Console` modules, and determine the type of the resulting effect.
+   */
+  val prgLayer = Console.live ++ Config.live
+  val provided = configProgram.provideLayer(prgLayer)
 
-//   /**
-//    * EXERCISE 18
-//    *
-//    * Define a ZIO value that describes an effect which uses Config with
-//    * Console that displays the port and host in the Console and fails
-//    * with a String if the host name contains `:`
-//    */
-//   val simpleConfigProgram: ZIO[Config, String, Unit] = ???
+  /**
+   * EXERCISE 17
+   *
+   * Create a `Runtime[Config with Console]` that can be used to run any
+   * effect that has a dependency on `Config`:
+   */
+  val ConfigRuntime: Runtime[Config with Console] = {
+    val env = Has.allOf(Console.Service.live, Config.Service.live)
+    Runtime(env, Platform.default)
+  }
 
-//   /**
-//    * EXERCISE 19
-//    *
-//    * Run the `simpleConfigProgram` using `ConfigRuntime.unsafeRun`.
-//    */
-//   val run: ??? = simpleConfigProgram ?
+  /**
+   * EXERCISE 18
+   *
+   * Define a ZIO value that describes an effect which uses Config with
+   * Console that displays the port and host in the Console and fails
+   * with a String if the host name contains `:`
+   */
+  val simpleConfigProgram: ZIO[Config with Console, String, Unit] = for {
+    port <- helpers.port
+    host <- helpers.host
+    _    <- if (host.contains(":")) ZIO.fail("Hostname should not contain :") else ZIO.unit
+    _    <- putStr(s"URL is http://$host:$port")
+  } yield ()
 
-//   /**
-//    * Build a file system service
-//    */
-//   /**
-//    * EXERCISE 20
-//    *
-//    * Build a module for a `FileSystem`.
-//    */
-//   trait FileSystem {
-//     val filesystem: FileSystem.Service[Any]
-//   }
+  /**
+   * EXERCISE 19
+   *
+   * Run the `simpleConfigProgram` using `ConfigRuntime.unsafeRun`.
+   */
+  val run = ConfigRuntime.unsafeRun(simpleConfigProgram)
 
-//   object FileSystem {
+  /**
+   * Build a file system service
+   */
+  /**
+   * EXERCISE 20
+   *
+   * Build a module for a `FileSystem`.
+   */
+  // trait FileSystem {
+  //   val filesystem: FileSystem.Service[Any]
+  // }
 
-//     /**
-//      * EXERCISE 21
-//      *
-//      * Create a service defining the capabilities of a `FileSystem`.
-//      */
-//     trait Service[R] {}
+  // object FileSystem {
 
-//     /**
-//      * EXERCISE 22
-//      *
-//      * Create a production implementation of the `FileSystem` module.
-//      */
-//     trait Live extends FileSystem with Console.Service {
-//       val filesystem: ??? = ???
-//     }
+  //   /**
+  //    * EXERCISE 21
+  //    *
+  //    * Create a service defining the capabilities of a `FileSystem`.
+  //    */
+  //   trait Service[R] {}
 
-//     // fixme
-//     object Live extends Live {
-//       override def putStr(line: String): UIO[Unit]   = ???
-//       override def putStrLn(line: String): UIO[Unit] = ???
-//       override def getStrLn: IO[IOException, String] = ???
+  //   /**
+  //    * EXERCISE 22
+  //    *
+  //    * Create a production implementation of the `FileSystem` module.
+  //    */
+  //   trait Live extends FileSystem with Console {
+  //     val filesystem: ??? = ???
+  //   }
+  //   object Live extends Live with Console.Live
+  // }
 
-//     }
-//   }
+  // /**
+  //  * EXERCISE 23
+  //  *
+  //  * Using `ZIO.accessM`, create helpers.
+  //  */
+  // object fs extends FileSystem.Service[FileSystem] {}
 
-//   /**
-//    * EXERCISE 23
-//    *
-//    * Using `ZIO.accessM`, create helpers.
-//    */
-//   object fs extends FileSystem.Service[FileSystem] {}
+  // /**
+  //  * EXERCISE 24
+  //  *
+  //  * Write a simple program that uses `FileSystem with Console`.
+  //  */
+  // val fileProgram: ZIO[FileSystem with Console, ???, ???] =
+  //   ???
 
-//   /**
-//    * EXERCISE 24
-//    *
-//    * Write a simple program that uses `FileSystem with Console`.
-//    */
-//   val fileProgram: ZIO[FileSystem with Console, ???, ???] =
-//     ???
+  // /**
+  //  * EXERCISE 25
+  //  *
+  //  * Create a `Runtime` that can execute effects that require
+  //  * `FileSystem with Console`.
+  //  */
+  // val FSRuntime: Runtime[FileSystem with Console] =
+  //   ???
 
-//   /**
-//    * EXERCISE 25
-//    *
-//    * Create a `Runtime` that can execute effects that require
-//    * `FileSystem with Console`.
-//    */
-//   val FSRuntime: Runtime[FileSystem with Console] =
-//     ???
+  // /**
+  //  * EXERCISE 26
+  //  *
+  //  * Execute `fileProgram` using `FSRuntime.unsafeRun`.
+  //  */
+  // lazy val fileProgramLive: ??? = FSRuntime.unsafeRun(fileProgram)
 
-//   /**
-//    * EXERCISE 26
-//    *
-//    * Execute `fileProgram` using `FSRuntime.unsafeRun`.
-//    */
-//   lazy val fileProgramLive: ??? = FSRuntime.unsafeRun(fileProgram)
+  // /**
+  //  * EXERCISE 27
+  //  *
+  //  * Implement a mock file system module.
+  //  */
+  // trait MockFileSystem extends FileSystem {
+  //   val filesystem = ???
+  // }
 
-//   /**
-//    * EXERCISE 27
-//    *
-//    * Implement a mock file system module.
-//    */
-//   trait MockFileSystem extends FileSystem {
-//     val filesystem = ???
-//   }
-
-//   /**
-//    * EXERCISE 28
-//    *
-//    * Using `ZIO#provide` with the mock file system module, and a default
-//    * runtime, execute `fileProgram`.
-//    */
-//   lazy val fileProgramTest: ??? = Runtime.default.unsafeRun {
-//     fileProgram.provide(???)
-//   }
-// }
+  // /**
+  //  * EXERCISE 28
+  //  *
+  //  * Using `ZIO#provide` with the mock file system module, and a default
+  //  * runtime, execute `fileProgram`.
+  //  */
+  // lazy val fileProgramTest: ??? = new DefaultRuntime {}.unsafeRun {
+  //   fileProgram.provide(???)
+  // }
+}
